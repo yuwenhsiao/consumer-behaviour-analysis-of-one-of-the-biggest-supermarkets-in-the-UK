@@ -1,0 +1,494 @@
+import warnings
+warnings.filterwarnings('ignore')
+
+import pandas as pd
+
+meat_df = pd.read_excel("/Users/mini/Desktop/Complete Dissertation/data analysis/python/Meat Promotions Dataset.xls", sheet_name="Dataset")
+meat_df.head()
+
+import numpy as np
+np.unique(meat_df["Lifestage"])
+
+np.unique(meat_df["ID"])
+np.unique(meat_df["Region"])
+
+meat_df.columns
+
+# which product have maximum sale and minimum sale
+beef = ["B1_SALES","B2_SALES","B3_SALES","B4_SALES","B5_SALES","B6_SALES","B7_SALES","B8_SALES","B9_SALES","B10_SALES",
+       "B11_SALES","B12_SALES","B13_SALES","B14_SALES","B15_SALES","B16_SALES","B17_SALES","B18_SALES","B19_SALES","B20_SALES"]
+
+lamb = ["L1_SALES","L2_SALES","L3_SALES","L4_SALES","L5_SALES","L6_SALES","L7_SALES","L8_SALES","L9_SALES","L10_SALES",
+       "L11_SALES","L12_SALES","L13_SALES"]
+
+pork = ["P1_SALES","P2_SALES","P3_SALES","P4_SALES","P5_SALES","P6_SALES","P7_SALES","P8_SALES","P9_SALES","P10_SALES",
+       "P11_SALES","P12_SALES"]
+
+
+beef_sum = 0
+for field in beef:
+    beef_sum += sum(meat_df[field])
+    
+lamb_sum = 0
+for field in lamb:
+    lamb_sum += sum(meat_df[field])
+    
+pork_sum = 0
+for field in pork:
+    pork_sum += sum(meat_df[field])
+    
+print("beef: ",beef_sum)
+print("lamb: ",lamb_sum)
+print("pork: ",pork_sum)
+
+# so beef > Pork > Lamb
+
+# which product is more buy in which region and under what lifestage
+meat_df.groupby(["Lifestage","Region"]).sum()
+
+# for B1 (Premium Roasting beef)- TPR only. No multi-buy exist
+B1_df = pd.DataFrame({"B1_Sales":meat_df["B1_SALES"],"TPR":meat_df["B1_TPR"], "Week":meat_df["Week"], "Date":meat_df["DATE"], "Lifestage":meat_df["Lifestage"], "Region":meat_df["Region"]}) 
+B1_df.head()
+
+# from 29 may,2006 to 14 jan, 2008
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.dates as mdates
+import seaborn as sns
+import matplotlib
+%matplotlib notebook
+%matplotlib inline
+
+formatter = matplotlib.dates.DateFormatter('%Y-%m-%d')
+
+for stage in np.unique(B1_df["Lifestage"]):
+for region in np.unique(B1_df["Region"].values):
+df = B1_df.loc[(B1_df.Lifestage==stage) & (B1_df.Region==region)].copy()
+sns.set(font_scale=1.5, style="whitegrid")
+fig, ax1 = plt.subplots(figsize=(30,15))
+ax1.set_title("For Lifestage = {} and Region = {}".format(stage, region))
+sns.lineplot(x="Date", y="B1_Sales", data=df, ax=ax1) # plot normal time series plot
+sns.scatterplot(x="Date", y="B1_Sales", data=df.loc[df.TPR == 1], color='red', ax=ax1)
+ax1.xaxis.set_major_formatter(formatter)
+plt.setp(ax1.get_xticklabels(), rotation = 90)
+        
+# total sales of B1 product through each lifestage in each region
+B1_df.groupby(["Lifestage","Region"]).sum().sort_values("B1_Sales", ascending=False)
+
+# Recheck : how many TRP in each region
+ls_region = []
+ls_stage = []
+ls_tpr = []
+for region, stage in zip(np.unique(B1_df["Region"]), np.unique(B1_df["Lifestage"])):
+    df = B1_df.loc[(B1_df.Region==region) & (B1_df.Lifestage==stage)].copy()
+    count = 0
+    for tpr in df["TPR"]:
+        if tpr == 1:
+            count += 1
+    ls_region.append(region)
+    ls_stage.append(stage)
+    ls_tpr.append(count)
+
+df_tpr = pd.DataFrame({"Region":ls_region, "Lifestage":ls_stage, "total_TPR": ls_tpr})
+df_tpr.head()
+
+# for B2 TPR analysis, no multi buy exist
+
+B2_df = pd.DataFrame({"B2_Sales":meat_df["B2_SALES"],"TPR":meat_df["B2_TPR"], "Week":meat_df["Week"], "Date":meat_df["DATE"], "Lifestage":meat_df["Lifestage"], "Region":meat_df["Region"]}) 
+B2_df.head()
+
+# compare the result of TPR on the sales of B1 and B2 product.
+# normalise the sales figure for both so that it can be brought to the same level
+# scale between 0 and 1
+
+B1_df["Norm_B1_Sales"] = [val/sum(B1_df["B1_Sales"]) for val in B1_df["B1_Sales"]]
+B2_df["Norm_B2_Sales"] = [val/sum(B2_df["B2_Sales"]) for val in B2_df["B2_Sales"]]
+
+formatter = matplotlib.dates.DateFormatter('%Y-%m-%d')
+
+for stage in np.unique(B1_df["Lifestage"]):
+    for region in np.unique(B1_df["Region"].values):
+        df1 = B1_df.loc[(B1_df.Lifestage==stage) & (B1_df.Region==region)].copy()
+        df2 = B2_df.loc[(B2_df.Lifestage==stage) & (B2_df.Region==region)].copy()
+        sns.set(font_scale=1.5, style="whitegrid")
+        fig, ax1 = plt.subplots(figsize=(30,15))
+        ax1.set_title("For Lifestage = {} and Region = {}".format(stage, region))
+        sns.lineplot(x="Date", y="Norm_B1_Sales", data=df1, ax=ax1, color='blue', label="B1 Product (Roasted Beef)") # plot normal time series plot
+        sns.scatterplot(x="Date", y="Norm_B1_Sales", data=df1.loc[df1.TPR == 1], color='red', ax=ax1)
+        sns.lineplot(x="Date", y="Norm_B2_Sales", data=df2, ax=ax1, color='green', label="B2 Product (Grilled Beef)") # plot normal time series plot
+        sns.scatterplot(x="Date", y="Norm_B2_Sales", data=df2.loc[df2.TPR == 1], color='red', ax=ax1)
+        ax1.xaxis.set_major_formatter(formatter)
+        ax1.legend(fontsize="medium")
+        plt.setp(ax1.get_xticklabels(), rotation = 90)
+        plt.ylabel("Sales")
+        
+ # L10 and P11: Multi
+L10_df = pd.DataFrame({"L10_Sales":meat_df["L10_SALES"],"Multi":meat_df["L10_Multi"], "Week":meat_df["Week"], "Date":meat_df["DATE"], "Lifestage":meat_df["Lifestage"], "Region":meat_df["Region"]}) 
+P11_df = pd.DataFrame({"P11_Sales":meat_df["P11_SALES"],"Multi":meat_df["P11_Multi"], "Week":meat_df["Week"], "Date":meat_df["DATE"], "Lifestage":meat_df["Lifestage"], "Region":meat_df["Region"]}) 
+
+L10_df.head()
+P11_df.head()
+
+plt.boxplot(P11_df["P11_Sales"])
+plt.show()
+plt.close()
+
+fig, axs = plt.subplots(1, 1,figsize =(10, 7),tight_layout = True)
+axs.hist(P11_df["P11_Sales"], bins = "auto")
+plt.show()
+
+# P11 is an occassional product
+
+L10_df["Norm_L10_Sales"] = [val/sum(L10_df["L10_Sales"]) for val in L10_df["L10_Sales"]]
+P11_df["Norm_P11_Sales"] = [val/sum(P11_df["P11_Sales"]) for val in P11_df["P11_Sales"]]
+
+formatter = matplotlib.dates.DateFormatter('%Y-%m-%d')
+
+for stage in np.unique(B1_df["Lifestage"]):
+    for region in np.unique(B1_df["Region"].values):
+        df1 = L10_df.loc[(L10_df.Lifestage==stage) & (L10_df.Region==region)].copy()
+        df2 = P11_df.loc[(P11_df.Lifestage==stage) & (P11_df.Region==region)].copy()
+        sns.set(font_scale=1.5, style="whitegrid")
+        fig, ax1 = plt.subplots(figsize=(30,15))
+        ax1.set_title("For Lifestage = {} and Region = {}".format(stage, region))
+        sns.lineplot(x="Date", y="Norm_L10_Sales", data=df1, ax=ax1, color='blue', label="L10 Product (Std Minced Lamb)") # plot normal time series plot
+        sns.scatterplot(x="Date", y="Norm_L10_Sales", data=df1.loc[df1.Multi == 1], color='red', ax=ax1)
+        sns.lineplot(x="Date", y="Norm_P11_Sales", data=df2, ax=ax1, color='green', label="P11 Product (SR/Organic Mince Pork)") # plot normal time series plot
+        sns.scatterplot(x="Date", y="Norm_P11_Sales", data=df2.loc[df2.Multi == 1], color='red', ax=ax1)
+        ax1.xaxis.set_major_formatter(formatter)
+        ax1.legend(fontsize="medium")
+        plt.setp(ax1.get_xticklabels(), rotation = 90)
+        plt.ylabel("Sales")
+        
+# analysing B12 and B13. Both product have TPR and Multi buy promotion scheme
+B12_df = pd.DataFrame({"B12_Sales":meat_df["B12_SALES"],"TPR":meat_df["B12_TPR"],"Multi":meat_df["B12_Multi"], "Week":meat_df["Week"], "Date":meat_df["DATE"], "Lifestage":meat_df["Lifestage"], "Region":meat_df["Region"]}) 
+B13_df = pd.DataFrame({"B13_Sales":meat_df["B13_SALES"],"TPR":meat_df["B13_TPR"],"Multi":meat_df["B13_Multi"], "Week":meat_df["Week"], "Date":meat_df["DATE"], "Lifestage":meat_df["Lifestage"], "Region":meat_df["Region"]}) 
+
+B12_df.head()
+B13_df.head()
+
+# plotting B12 (Std other fry/grill beef) and B13 (Std Sirloin Steak Beef) for analysing TPR and multi
+
+B12_df["Norm_B12_Sales"] = [val/sum(B12_df["B12_Sales"]) for val in B12_df["B12_Sales"]]
+B13_df["Norm_B13_Sales"] = [val/sum(B13_df["B13_Sales"]) for val in B13_df["B13_Sales"]]
+
+formatter = matplotlib.dates.DateFormatter('%Y-%m-%d')
+
+for stage in np.unique(B1_df["Lifestage"]):
+for region in np.unique(B1_df["Region"].values):
+        df1 = B12_df.loc[(B12_df.Lifestage==stage) & (B12_df.Region==region)].copy()
+        df2 = B13_df.loc[(B13_df.Lifestage==stage) & (B13_df.Region==region)].copy()
+        sns.set(font_scale=1.5, style="whitegrid")
+        fig, ax1 = plt.subplots(figsize=(30,15))
+        ax1.set_title("For Lifestage = {} and Region = {}".format(stage, region))
+        sns.lineplot(x="Date", y="Norm_B12_Sales", data=df1, ax=ax1, color='blue', label="B12 Product (Std other fry/grill beef)") # plot normal time series plot
+        sns.scatterplot(x="Date", y="Norm_B12_Sales", data=df1.loc[df1.TPR == 1], color='red', ax=ax1, label="TPR")
+        sns.scatterplot(x="Date", y="Norm_B12_Sales", data=df1.loc[df1.Multi == 1], color='black', ax=ax1, label="Multi")
+        sns.lineplot(x="Date", y="Norm_B13_Sales", data=df2, ax=ax1, color='green', label="B13 Product (Std Sirloin Steak Beef)") # plot normal time series plot
+        sns.scatterplot(x="Date", y="Norm_B13_Sales", data=df2.loc[df2.TPR == 1], color='red', ax=ax1)
+        sns.scatterplot(x="Date", y="Norm_B13_Sales", data=df2.loc[df2.Multi == 1], color='black', ax=ax1)
+        ax1.xaxis.set_major_formatter(formatter)
+        ax1.legend(fontsize="medium")
+        plt.setp(ax1.get_xticklabels(), rotation = 90)
+        plt.ylabel("Sales")
+       
+ # Anova to check which factor contirbute more to the sales among Lifestage, Region and Promotion scheme for B12
+import pandas as pd
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+
+mod = ols('B12_Sales~Lifestage+Region+Multi+TPR', data=B12_df).fit()
+aov = sm.stats.anova_lm(mod,type=2)
+print(aov)
+
+# Anova to check which factor contirbute more to the sales among Lifestage, Region and Promotion scheme for B13
+mod = ols('B13_Sales~Lifestage+Region+Multi+TPR', data=B13_df).fit()
+aov = sm.stats.anova_lm(mod,type=2)
+print(aov)
+
+# Mutual information is calculated between two variables and measures the reduction in uncertainty for one variable given a known value of the other variable.
+# use linear regression with mutual information to find out which attribute is more contributing in sales
+
+B12_reg_df = B12_df.copy()
+B12_reg_df.drop(["Week","Date"], axis=1, inplace=True)
+
+ls_region = []
+for region in B12_df["Region"]:
+    if region == 'East England':
+        ls_region.append(0)
+    elif region == 'London':
+        ls_region.append(1)
+    elif region == 'Midlands':
+        ls_region.append(2)
+    elif region == 'North East':
+        ls_region.append(3)
+    elif region == 'North West':
+        ls_region.append(4)
+    elif region == 'Scotland':
+        ls_region.append(5)
+    elif region == 'South & South East':
+        ls_region.append(6)
+    elif region == 'South West':
+        ls_region.append(7)
+    elif region == 'Wales & West Country':
+        ls_region.append(8)
+    else:
+        ls_region.append(9)
+
+ls_lifestage = []
+for stage in B12_df["Lifestage"]:
+    if stage == 'Older Adults':
+        ls_lifestage.append(0)
+    elif stage == 'Older Families':
+        ls_lifestage.append(1)
+    elif stage == 'Pensioners':
+        ls_lifestage.append(2)
+    elif stage == 'Young Adults':
+        ls_lifestage.append(3)
+    else:
+        ls_lifestage.append(4)
+
+        
+B12_reg_df.drop(["Lifestage","Region","Norm_B12_Sales"], axis=1, inplace=True)
+B12_reg_df["Lifestage"] = ls_lifestage
+B12_reg_df["Region"] = ls_region
+
+B12_reg_df.head()
+
+from sklearn.datasets import make_regression
+from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import mutual_info_regression
+from matplotlib import pyplot
+
+y = B12_reg_df["B12_Sales"]
+B12_reg_df.drop("B12_Sales",axis=1,inplace=True)
+ 
+# feature selection
+def select_features(X_train, y_train, X_test):
+    fs = SelectKBest(score_func=mutual_info_regression, k='all')
+    fs.fit(X_train, y_train)
+    X_train_fs = fs.transform(X_train)
+    X_test_fs = fs.transform(X_test)
+    return X_train_fs, X_test_fs, fs
+ 
+
+X_train, X_test, y_train, y_test = train_test_split(B12_reg_df, y, test_size=0.33, random_state=1)
+X_train_fs, X_test_fs, fs = select_features(X_train, y_train, X_test)
+
+for i in range(len(fs.scores_)):
+    print('Feature %d: %f' % (i, fs.scores_[i]))
+
+pyplot.bar([i for i in range(len(fs.scores_))], fs.scores_)
+pyplot.show()
+
+# time series analysis
+
+all_products = beef+lamb+pork
+
+total_sale = []
+for i in range(0,meat_df.shape[0]):
+    temp_sum = 0
+    for product in all_products:
+        temp_sum += meat_df[product][i]
+    total_sale.append(temp_sum)
+    
+multis = ['B4_Multi','B8_Multi','B12_Multi','B13_Multi','B18_Multi','L10_Multi','P2_Multi','P3_Multi','P6_Multi','P11_Multi']
+    
+    
+tprs = ['B1_TPR','B2_TPR','B3_TPR','B4_TPR','B5_TPR','B6_TPR','B9_TPR','B12_TPR','B13_TPR','B14_TPR','B17_TPR',
+        'B18_TPR','B19_TPR','L1_TPR ','L2_TPR','L4_TPR','L9_TPR','P1_TPR','P2_TPR','P3_TPR','P4_TPR',
+        'P5_TPR','P6_TPR','P7_TPR','P8_TPR','P10_TPR']
+    
+total_tpr = []
+for i in range(0,meat_df.shape[0]):
+    temp_sum = 0
+    for tpr in tprs:
+        temp_sum += meat_df[tpr][i]
+    total_tpr.append(temp_sum)
+    
+total_multi = []
+for i in range(0,meat_df.shape[0]):
+    temp_sum = 0
+    for multi in multis:
+        temp_sum += meat_df[multi][i]
+    total_multi.append(temp_sum)
+    
+time_df = pd.DataFrame({'Date':meat_df["DATE"],'Lifestage':meat_df["Lifestage"],'Region':meat_df["Region"],'Total_Sale':total_sale,'Total_TPR':total_tpr,'Total_Multi':total_multi})
+time_df.head()
+
+mod = ols('Total_Sale~Lifestage+Region+Total_Multi+Total_TPR', data=time_df).fit()
+aov = sm.stats.anova_lm(mod,type=2)
+print(aov)
+
+time_df_ol_sco = time_df.loc[(time_df.Lifestage=="Older Families") & (time_df.Region == "Scotland")]
+time_df_ol_sco.set_index(time_df_ol_sco['Date'], inplace=True)
+time_df_ol_sco.drop("Date",axis=1,inplace=True)
+time_df_ol_sco.index.freq = 'W-MON'
+print(time_df_ol_sco.index.freq)
+time_df_ol_sco.head()
+
+time_df_ol_sco["Total_Sale"].plot()
+print(time_df_ol_sco.shape[0])
+plt.show()
+
+# holt winter exponential smoothing
+from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWES
+
+#took last 10 periods
+df_train = time_df_ol_sco["Total_Sale"].iloc[:-10]
+df_test = time_df_ol_sco["Total_Sale"].iloc[-10:]
+
+#build and train the model on the training data
+# seasonaland trend values = “add”, “mul”, “additive”, “multiplicative”
+model = HWES(df_train, seasonal_periods=4, trend='mul', seasonal='additive')
+fitted = model.fit(optimized=True, use_brute=True)
+
+#print out the training summary
+print(fitted.summary())
+
+#create an out of sample forcast for the next 10 steps beyond the final data point in the training data set
+sales_forecast = fitted.forecast(steps=10)
+
+#plot the training data, the test data and the forecast on the same plot
+fig = plt.figure()
+fig.suptitle('Sales of Meat in Scotland for older Families')
+past, = plt.plot(df_train.index, df_train, 'b.-', label='Sales History')
+future, = plt.plot(df_test.index, df_test, 'r.-', label='Actual Sales')
+predicted_future, = plt.plot(df_test.index, sales_forecast, 'g.-', label='Sales Forecast')
+plt.legend(handles=[past, future, predicted_future])
+plt.show()
+
+# Prepare dataset for LSTM
+
+#'Older Adults', 'Older Families', 'Pensioners', 'Young Adults','Young Families'
+def LifestageToVector(lifestage):
+    vector = np.zeros(5,dtype=int)
+    if lifestage == 'Older Adults':
+        vector[0] += 1
+    elif lifestage == 'Older Families':
+        vector[1] += 1
+    elif lifestage == 'Pensioners':
+        vector[2] += 1
+    elif lifestage == 'Yound Adults':
+        vector[3] += 1
+    else:
+        vector[4] += 1
+    return vector
+
+# 'East England', 'London', 'Midlands', 'North East', 'North West','Scotland', 'South & South East', 'South West',
+# 'Wales & West Country', 'Yorkshire'
+def RegionToVector(Region):
+    vector = np.zeros(10,dtype=int)
+    if Region == 'East England':
+        vector[0] += 1
+    elif Region == 'London':
+        vector[1] += 1
+    elif Region == 'Midlands':
+        vector[2] += 1
+    elif Region == 'North East':
+        vector[3] += 1
+    elif Region == 'North West':
+        vector[4] += 1
+    elif Region == 'Scotland':
+        vector[5] += 1
+    elif Region == 'South & South East':
+        vector[6] += 1
+    elif Region == 'South West':
+        vector[7] += 1
+    elif Region == 'Wales & West Country':
+        vector[8] += 1
+    else:
+        vector[9] += 1
+    return vector
+
+def PromotionToVector(tpr=0,multi=0):
+    vector = np.array([tpr,multi])
+    return vector
+    
+def getFeatureVector(lifestage,Region,tpr,multi):
+    v1 = LifestageToVector(lifestage)
+    v2 = RegionToVector(Region)
+    v3 = PromotionToVector(tpr,multi)
+    vector = np.hstack((v1,v2))
+    vector = np.hstack((vector,v3))
+    return vector
+        
+v = getFeatureVector('Older Adults',"Scotland",1,2)
+
+all_vectors = []
+for stage, region, tpr, multi, sale in zip(time_df["Lifestage"],time_df["Region"],time_df["Total_TPR"],time_df["Total_Multi"],time_df["Total_Sale"]):
+    v = getFeatureVector(stage,region,tpr,multi)
+    all_vectors.append(np.append(v,sale))
+    
+all_vectors[0]
+
+# caling data using all 6 features (excluding dates). 
+# when we invert scaling, we need again same six features to get actual values
+
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler().fit(all_vectors)
+scaled_vectors = scaler.transform(all_vectors)
+
+scaled_vectors[0]
+
+trainX = []
+trainY = []
+
+# look at last 4 week and predict for the 5th week
+n_future = 1
+n_past = 4
+
+for i in range(n_past, len(scaled_vectors) - n_future + 1):
+    trainX.append(scaled_vectors[i-n_past:i, 0:18])
+    trainY.append(scaled_vectors[i+n_future-1:i+n_future, 0])
+    
+trainX, trainY = np.array(trainX), np.array(trainY)
+
+print(trainX.shape)
+print(trainY.shape)
+
+# LSTM
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import Dense, Dropout
+
+model = Sequential()
+model.add(LSTM(64, activation='relu', input_shape=(trainX.shape[1], trainX.shape[2]), return_sequences=True))
+model.add(LSTM(32, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(trainY.shape[1]))
+
+model.compile(optimizer='adam', loss='mse')
+model.summary()
+
+
+# fit the model
+history = model.fit(trainX, trainY, epochs=20, batch_size=16, validation_split=0.1, verbose=1)
+
+plt.plot(history.history['loss'], label='Training loss')
+plt.plot(history.history['val_loss'], label='Validation loss')
+plt.legend()
+
+past_weeks_for_prediction=15
+prediction = model.predict(trainX[-past_weeks_for_prediction:])
+
+actual_sale = []
+
+i=0
+for vector in scaled_vectors[-15:]:
+    vector = vector.tolist()
+    vector[-1] = prediction[i][0]
+    actual_sale.append(np.asarray(vector))
+    i += 1
+
+y_pred_future = scaler.inverse_transform(actual_sale)
+
+predicted_sales = []
+for value in y_pred_future:
+    predicted_sales.append(value[-1])
+    
+result_df = pd.DataFrame({"Actual Sale (last 15 weeks)":time_df["Total_Sale"][-past_weeks_for_prediction:], "Predicted Sale (last 15 weeks)":predicted_sales})
+result_df
+
